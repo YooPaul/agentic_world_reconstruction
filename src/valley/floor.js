@@ -17,8 +17,8 @@ export const KINDS = [
   { name: 'pasture', colour: [0.17, 0.46, 0.14] },
   { name: 'pasture', colour: [0.27, 0.57, 0.13] },
   { name: 'hay', colour: [0.4, 0.62, 0.14] },
-  { name: 'wheat', colour: [0.66, 0.6, 0.2] },
-  { name: 'young', colour: [0.24, 0.58, 0.16] },
+  { name: 'rice', colour: [0.43, 0.56, 0.18] },
+  { name: 'young rice', colour: [0.22, 0.46, 0.25] },
   { name: 'clover', colour: [0.11, 0.4, 0.17] },
   { name: 'orchard', colour: [0.2, 0.5, 0.14] },
   { name: 'plough', colour: [0.4, 0.3, 0.17] },
@@ -67,52 +67,16 @@ const F = { kind: 0, border: 0, hedge: false, key: 0, dirx: 1, diry: 0 };
  * that names the field, and the way it is worked. Returns one object, reused.
  */
 export function fieldAt(u, v) {
-  // (edges that bend a little, as fields laid out by people over centuries do)
-  const wu = u + 24 * Math.sin(v / 97 + 1.3) + 11 * Math.sin(v / 41);
-  const wv = v + 24 * Math.sin(u / 113 + 0.4) + 11 * Math.sin(u / 37 + 2);
-  const fx = wu / CELL;
-  const fy = wv / CELL;
-  const ix = Math.floor(fx);
-  const iy = Math.floor(fy);
-  let d1 = 1e9;
-  let d2 = 1e9;
-  let ax = 0;
-  let ay = 0;
-  let bx = 0;
-  let by = 0;
-  for (let j = -1; j <= 1; j++) {
-    for (let i = -1; i <= 1; i++) {
-      const cx = ix + i;
-      const cy = iy + j;
-      const dx = cx + 0.12 + 0.76 * rnd(cx, cy, 1) - fx;
-      const dy = cy + 0.12 + 0.76 * rnd(cx, cy, 2) - fy;
-      const d = dx * dx + dy * dy;
-      if (d < d1) {
-        d2 = d1;
-        bx = ax;
-        by = ay;
-        d1 = d;
-        ax = cx;
-        ay = cy;
-      } else if (d < d2) {
-        d2 = d;
-        bx = cx;
-        by = cy;
-      }
-    }
-  }
-  F.border = (Math.sqrt(d2) - Math.sqrt(d1)) * 0.5 * CELL;
-  F.key = ax * 4096 + ay;
-  // most edges are hedged; some are only a change of crop
-  F.hedge = rnd(Math.min(ax, bx) * 64 + Math.max(ax, bx), Math.min(ay, by) * 64 + Math.max(ay, by), 3) > 0.3;
-  const pick = rnd(ax, ay, 4);
-  let kind = pick < 0.26 ? 0 : pick < 0.46 ? 1 : pick < 0.6 ? 2 : pick < 0.74 ? 3 : pick < 0.83 ? 4 : pick < 0.89 ? 5 : pick < 0.95 ? ORCHARD : 7;
-  // near the walk it is all grass, where your own meadow's blades may be standing on it
-  if (Math.hypot((ax + 0.5) * CELL, (ay + 0.5) * CELL) < 690 && kind > 2) kind = kind % 3;
-  F.kind = kind;
-  const turn = rnd(ax, ay, 5) * Math.PI;
-  F.dirx = Math.cos(turn);
-  F.diry = Math.sin(turn);
+  // Narrow rectangular paddies follow the valley, divided by earthen irrigation banks.
+  const ix = Math.floor(u / 82), iy = Math.floor(v / 47);
+  const du = u - ix * 82, dv = v - iy * 47;
+  F.border = Math.min(du, 82 - du, dv, 47 - dv);
+  F.key = ix * 4096 + iy;
+  F.hedge = false;
+  const pick = rnd(ix, iy, 4);
+  F.kind = pick < 0.28 ? 4 : pick < 0.55 ? 2 : pick < 0.77 ? 1 : pick < 0.9 ? 5 : pick < 0.96 ? 7 : ORCHARD;
+  F.dirx = 1;
+  F.diry = 0;
   return F;
 }
 
@@ -165,9 +129,9 @@ export function paintFloor(size = 1536) {
       const line = 1 - Math.min(1, Math.max(0, (f.border - (f.hedge ? 4.2 : 1.4)) / 1.2));
       if (line > 0) {
         const k = line * (f.hedge ? 1 : 0.5);
-        r += (0.035 - r) * k;
-        g += (0.16 - g) * k;
-        b += (0.085 - b) * k;
+        r += (0.23 - r) * k;
+        g += (0.29 - g) * k;
+        b += (0.19 - b) * k;
       }
       // the village stands on plain trodden grass, not in a field
       const yard = 1 - Math.min(1, Math.max(0, (Math.hypot((u - VILLAGE[0]) / 80, (v - VILLAGE[1]) / 96) - 0.9) / 0.2));

@@ -18,6 +18,7 @@ import { createSky, createSkyParts, SUNSET } from './sky.js';
 import { createSounds } from './sounds.js';
 import { createStrokes } from './strokes.js';
 import { createTrees } from './trees.js';
+import { createRural } from './rural.js';
 import { createWanderer } from './wanderer.js';
 import { createTarn } from './water.js';
 import { fromValley, heightAt, HERO, paint, START, tarnDistance } from './world.js';
@@ -76,7 +77,7 @@ const offThread = (message, here) =>
       fallback();
     }
   });
-const quality = params.get('quality') ?? 'high';
+const quality = params.get('quality') ?? 'medium';
 const EXTENT = 1280;
 const GROUND = { extent: EXTENT, extentRes: EXTENT, centre: [0, 0] };
 const FLOOR_SIZE = quality === 'low' ? 1024 : 1536;
@@ -97,7 +98,7 @@ try {
   $('loading').textContent = 'Needs WebGL 2';
   throw new Error('no WebGL 2');
 }
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, params.has('dpr') ? Number(params.get('dpr')) : 1.5));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, params.has('dpr') ? Number(params.get('dpr')) : 1.25));
 renderer.setSize(window.innerWidth, window.innerHeight);
 
 const scene = new THREE.Scene();
@@ -149,7 +150,7 @@ const field = createField({
   baked,
   textures: await groundTextures,
   density: quality === 'low' ? 0.45 : quality === 'medium' ? 0.7 : 1,
-  height: 0.5,
+  height: 0.38,
   seed: 3,
 });
 scene.add(field.group);
@@ -187,17 +188,19 @@ mark('strokes');
 }
 mark('floor');
 await stage(0.3, 'Building the village');
-const frame = createFrame(renderer, field, { samples: quality === 'low' ? 0 : 4, bloom: 0.1 });
+const frame = createFrame(renderer, field, { samples: quality === 'low' ? 0 : 4, bloom: 0.055 });
 mark('frame');
 const sky = createSky(renderer, field, { parts: skyParts });
 mark('sky');
+const rural = createRural(field);
+scene.add(rural.group);
 const trees = createTrees(field, { cards: quality === 'low' ? 0.6 : quality === 'medium' ? 0.8 : 1 });
 mark('trees');
 const farWoods = createFarWoods(field);
 mark('farWoods');
 scene.add(sky.mesh, createHorizon(field, EXTENT / 2), trees.group, farWoods.group, createTarn(field, sky));
 // the finish: the frame laid in as brush marks. ?paint=0 for none; P turns it on and off.
-frame.paint = params.has('paint') ? Number(params.get('paint')) : quality === 'low' ? 0 : quality === 'medium' ? 2 : 3;
+frame.paint = params.has('paint') ? Number(params.get('paint')) : quality === 'low' ? 0 : quality === 'medium' ? 1 : 2;
 const paintWas = frame.paint || 3;
 mark('build');
 await stage(0.45, 'Planting trees');
@@ -362,6 +365,9 @@ const physics = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
     if (kind > 3) break;
     physics.createCollider(RAPIER.ColliderDesc.cylinder(4, (kind === 0 ? 0.85 : 0.4) * scale).setTranslation(tx, field.heightAt(tx, tz) + 3, tz));
   }
+}
+for (const b of rural.solid) {
+  physics.createCollider(RAPIER.ColliderDesc.cuboid(b.hx,b.hy,b.hz).setTranslation(b.x,b.y,b.z).setRotation({x:0,y:Math.sin(b.turn/2),z:0,w:Math.cos(b.turn/2)}));
 }
 const wanderer = await wandererComing;
 scene.add(wanderer.group);

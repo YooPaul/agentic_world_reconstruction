@@ -111,6 +111,9 @@ void main() {
     if (vUp.x > 0.0) {
       // how high this wall stands
       float top = -1.6 + (vOwn.y + 1.6) / max(vUp.x, 0.02);
+      // Dark weatherboard below the plaster, with fine horizontal lap lines.
+      float siding = 1.0 - smoothstep(1.0, 1.12, vOwn.y);
+      paint = mix(paint, vec3(0.24,0.19,0.14) * (0.85 + 0.15 * step(0.12,fract(vOwn.y*5.0))), siding);
       // windows: in bays set out from the middle of the wall, a storey at a time; not every bay has one
       float sy = (vOwn.y - 0.2) / 3.0;
       float storey = floor(sy);
@@ -121,26 +124,28 @@ void main() {
       float has = fits * step(0.24, hash12(vec2(bay, storey) + seed * 53.0));
       // the door, in the middle of the front
       float front = step(0.5, vOwnN.z) * known;
-      float doorway = front * step(abs(run), 0.86) * step(vOwn.y, 2.5 - 0.5 * run * run);
-      float door = front * step(abs(run), 0.62) * step(vOwn.y, 2.24 - 0.6 * run * run);
+      float doorway = front * step(abs(run), 1.12) * step(vOwn.y, 2.5);
+      float door = front * step(abs(run), 0.96) * step(vOwn.y, 2.24);
       has *= 1.0 - front * step(abs(bay), 0.5) * step(storey, 0.5);
       // shutters, on some houses, in the house's own colour
-      float shutters = step(0.45, fract(seed * 13.7));
+      float shutters = 0.0;
       float which = fract(seed * 29.3);
       vec3 shutter = which < 0.34 ? vec3(0.2, 0.37, 0.27) : which < 0.67 ? vec3(0.25, 0.36, 0.52) : vec3(0.52, 0.25, 0.17);
       float inY = step(abs(wy), 0.62);
-      float surround = step(abs(bx), 0.56) * step(abs(wy), 0.74);
-      float pane = step(abs(bx), 0.44) * inY;
-      float bars = max(step(abs(bx), 0.04), step(abs(wy - 0.08), 0.035)) * (1.0 - smoothstep(0.03, 0.09, px));
+      float surround = step(abs(bx), 0.93) * step(abs(wy), 0.74);
+      float pane = step(abs(bx), 0.83) * inY;
+      float bars = max(step(abs(fract(bx * 2.4 + 0.5) - 0.5), 0.035), step(abs(wy - 0.08), 0.035)) * (1.0 - smoothstep(0.03, 0.09, px));
       paint = mix(paint, vColor * 1.08, surround * has);
       paint = mix(paint, shutter * (0.85 + 0.3 * step(0.5, fract(wy * 4.0))), step(0.44, abs(bx)) * step(abs(bx), 0.9) * inY * has * shutters);
       // glass: dark, with a little of the sky in its upper half
-      paint = mix(paint, mix(vec3(0.08, 0.1, 0.16), vec3(0.24, 0.36, 0.5), smoothstep(-0.1, 0.6, wy) * 0.8), pane * has);
-      paint = mix(paint, vColor * 0.95, bars * pane * has);
+      paint = mix(paint, mix(vec3(0.17, 0.22, 0.22), vec3(0.44, 0.51, 0.48), smoothstep(-0.1, 0.6, wy) * 0.8), pane * has);
+      paint = mix(paint, vec3(0.22, 0.16, 0.11), bars * pane * has);
+      float timber = max(step(abs(fract(run / 2.4 + 0.5) - 0.5), 0.025), step(abs(vOwn.y - 2.9), 0.07));
+      paint = mix(paint, vec3(0.23, 0.18, 0.13), timber * (1.0 - pane * has));
       // the sill, and its line of shadow
       paint *= 1.0 - 0.3 * step(abs(bx), 0.6) * step(-0.84, wy) * step(wy, -0.74) * has;
       paint = mix(paint, vec3(0.74, 0.7, 0.62) * (0.9 + 0.3 * dabs), doorway);
-      paint = mix(paint, vec3(0.3, 0.18, 0.1) * (0.82 + 0.3 * step(0.5, fract(run * 3.2 + 0.25))), door);
+      paint = mix(paint, vec3(0.28, 0.22, 0.15) * (0.8 + 0.35 * step(0.15, fract(run * 6.0 + 0.25))), door);
       // the eaves throw a band of shadow along the top of a sunlit wall
       shadeOnly = mix(1.0, 0.68, smoothstep(top - 0.75, top - 0.45, vOwn.y) * lit);
     }
@@ -225,7 +230,7 @@ function walls(m, w, d, h, cx = 0, cz = 0) {
 function gable(m, w, d, h, r, cx = 0, cz = 0) {
   const x = w / 2;
   const z = d / 2;
-  const o = 0.5; // the roof overhangs
+  const o = 0.95; // broad tiled eaves
   const drop = o * (r / x);
   // (the gable ends: wall, with no storeys to it)
   m.tri(P(cx - x, h, cz + z, -0.25, -x, x), P(cx + x, h, cz + z, -0.25, x, x), P(cx, h + r, cz + z, -0.45, 0, x), 0);
@@ -236,7 +241,7 @@ function gable(m, w, d, h, r, cx = 0, cz = 0) {
 
 /** A roof that slopes on all four sides to a short ridge. */
 function hip(m, w, d, h, r, cx = 0, cz = 0) {
-  const o = 0.5;
+  const o = 0.95;
   const x = w / 2 + o;
   const z = d / 2 + o;
   const ridge = Math.max(0, d / 2 - w / 2);
@@ -278,17 +283,14 @@ const SHAPES = {
     reach: 6,
     make(m) {
       walls(m, 7, 10, 3.4);
-      gable(m, 7, 10, 3.4, 3.4);
-      chimney(m, 0.9, -3.4, 5.2, 7.9);
+      gable(m, 7, 10, 3.4, 1.9);
     },
   },
   house: {
     reach: 6.5,
     make(m) {
       walls(m, 7.5, 11, 6.2);
-      gable(m, 7.5, 11, 6.2, 3.6);
-      chimney(m, -1.0, 3.9, 8.2, 11.0);
-      chimney(m, 1.3, -4.2, 7.9, 10.6, 0.8);
+      hip(m, 7.5, 11, 6.2, 2.1);
     },
   },
   // a house with a lower wing along one side
@@ -296,27 +298,23 @@ const SHAPES = {
     reach: 8,
     make(m) {
       walls(m, 7.5, 11, 6.2);
-      gable(m, 7.5, 11, 6.2, 3.6);
+      hip(m, 7.5, 11, 6.2, 2.1);
       walls(m, 5.5, 7.5, 3.5, 6.2, -1);
       gable(m, 5.5, 7.5, 3.5, 2.6, 6.2, -1);
-      chimney(m, 1.0, 4.0, 8.2, 11.0);
-      chimney(m, 6.2, -3.6, 5.0, 7.2, 0.8);
     },
   },
   tall: {
     reach: 5.5,
     make(m) {
-      walls(m, 7, 8.5, 9.2);
-      hip(m, 7, 8.5, 9.2, 3.4);
-      chimney(m, 2.0, 0.4, 10.6, 13.6);
+      walls(m, 7, 8.5, 6.2);
+      hip(m, 7, 8.5, 6.2, 2.0);
     },
   },
   long: {
     reach: 9,
     make(m) {
       walls(m, 8, 19, 4.6);
-      gable(m, 8, 19, 4.6, 4.2);
-      chimney(m, -1.2, 6.5, 7.0, 9.8);
+      hip(m, 8, 19, 4.6, 2.4);
     },
   },
   church: {
@@ -351,22 +349,9 @@ const SHAPES = {
   },
 };
 
-const WALLS = [
-  [0.95, 0.92, 0.82],
-  [0.92, 0.86, 0.68],
-  [0.93, 0.89, 0.76],
-  [0.9, 0.76, 0.5],
-  [0.9, 0.76, 0.68],
-  [0.74, 0.72, 0.66],
-];
-const ROOFS = [
-  [0.86, 0.3, 0.1],
-  [0.78, 0.2, 0.1],
-  [0.92, 0.42, 0.13],
-  [0.66, 0.2, 0.14],
-  [0.84, 0.36, 0.2],
-];
-const SLATE = [0.3, 0.34, 0.45];
+const WALLS = [[0.78,0.75,0.65], [0.68,0.68,0.61], [0.85,0.82,0.71], [0.55,0.48,0.37], [0.7,0.73,0.7], [0.39,0.31,0.23]];
+const ROOFS = [[0.16,0.21,0.25], [0.23,0.27,0.29], [0.12,0.16,0.19], [0.28,0.29,0.27], [0.19,0.23,0.28]];
+const SLATE = ROOFS[0];
 
 /**
  * Where the village's buildings stand: a tight cluster on its rise, the towers and the tall houses at the top, the
@@ -383,9 +368,7 @@ export function layVillage(random) {
     list.push({ x, z, turn, scale, shape, wall, roof });
     taken.push([du, dv, SHAPES[shape].reach * scale]);
   };
-  put(4, -10, 'round', 1.7, 0, WALLS[2], [0.78, 0.8, 0.84]);
-  put(-22, 16, 'church', 1.45, street, WALLS[0], SLATE);
-  put(24, 20, 'slim', 1.6, street, WALLS[1], ROOFS[1]);
+  put(-22, 16, 'long', 1.45, street, WALLS[0], SLATE);
   for (let i = 0, tries = 0; i < 32 && tries < 4000; tries++) {
     const a = random() * TAU;
     const d = Math.sqrt(random());

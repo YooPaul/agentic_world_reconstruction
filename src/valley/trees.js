@@ -536,6 +536,11 @@ export function createTrees(field, { cards = 1 } = {}) {
       for (let i = 0; i < n; i++) bush(Math.cos(a) * r + (random() - 0.5) * 9, Math.sin(a) * r + (random() - 0.5) * 9, 0.5 + 0.9 * random());
     }
   }
+  for (let i = trees.length - 1; i >= 0; i--) {
+    const [x,z] = trees[i];
+    const u = x * 0.6 + z * 0.8, v = -x * 0.8 + z * 0.6;
+    if (u > 8 && u < 205 && Math.abs(v) < 92) trees.splice(i,1);
+  }
   const group = new THREE.Group();
   const leafMaterial = new THREE.ShaderMaterial({
     glslVersion: THREE.GLSL3,

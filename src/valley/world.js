@@ -7,7 +7,7 @@ export const HERO = [0.6, 0.8];
 const [DX, DZ] = HERO;
 
 /** Where you start, the great tree, and the tarn: [x, z]. */
-export const START = [0, 0];
+export const START = fromValley(26, 0);
 export const TREE = fromValley(9, -13);
 /** Where the village stands, (u, v): near enough to be seen as a village, on a rise of its own. */
 export const VILLAGE = [740, -210];
@@ -165,6 +165,10 @@ export function heightAt(x, z) {
     h += (tarnFloor - h) * flat;
     h -= 2.4 * (1 - smooth(0.25, 1.06, t));
   }
+  // A gently graded neighborhood plateau shared by the visual ground and physics.
+  const u = x * DX + z * DZ, v = -x * DZ + z * DX;
+  const terrace = (1 - smooth(100, 125, Math.abs(u - 100))) * (1 - smooth(90, 115, Math.abs(v)));
+  h += (48 - h) * terrace;
   return h;
 }
 
@@ -215,5 +219,11 @@ export function paint(x, z) {
   const slope = Math.exp(-((u - 150) ** 2) / (2 * 80 ** 2) - ((v + 70) ** 2) / (2 * 120 ** 2));
   const shore = Math.exp(-((u - 390) ** 2) / (2 * 80 ** 2) - ((v - 50) ** 2) / (2 * 120 ** 2));
   const flowers = Math.min(1, smooth(0.4, 0.68, fbm(x / 38 - 6, z / 38 + 3, 2, 55)) * 0.75 + slope * 0.9 + shore * 0.7);
+  // Keep the lane, house yards and rice plots free of meadow blades.
+  if (u > 8 && u < 205 && Math.abs(v) < 90) {
+    const inYard = Math.abs(Math.abs(v) - 17) < 8 && [48,79,110,141,172].some((at) => Math.abs(u - at) < 9);
+    const clear = Math.abs(v) < 4 || inYard || (u > 52 && u < 179 && v > 30 && v < 88);
+    if (clear) growth = 0;
+  }
   return { dry: dry * (1 - wet), growth, wet, flowers };
 }

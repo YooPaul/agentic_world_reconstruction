@@ -593,7 +593,7 @@ export function createFarWoods(field) {
   sails.position.copy(foot).add(new THREE.Vector3(Math.sin(yaw) * 2.6 * size, 10.6 * size, Math.cos(yaw) * 2.6 * size));
   sails.scale.setScalar(size);
   sails.frustumCulled = false;
-  group.add(tower, sails);
+  // The rural neighborhood has no European windmill.
   const spin = new THREE.Quaternion();
   const axis = new THREE.Vector3(0, 0, 1);
   let angle = 0.4;

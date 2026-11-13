@@ -45,7 +45,7 @@ const server = createServer((req, res) => {
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const url = `http://127.0.0.1:${server.address().port}/?step&dpr=1&nopad&${flag('query', '')}`;
 
-const browser = await chromium.launch({ executablePath: process.env.CHROME, headless: true, args: ['--mute-audio', '--ignore-gpu-blocklist', '--use-angle=d3d11', '--enable-gpu'] });
+const browser = await chromium.launch({ executablePath: process.env.CHROME, headless: true, args: ['--mute-audio', '--ignore-gpu-blocklist', ...(process.platform === 'win32' ? ['--use-angle=d3d11'] : []), '--enable-gpu'] });
 const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1 });
 const problems = [];
 page.on('console', (m) => {
@@ -74,7 +74,7 @@ for (const step of script.split(';').map((s) => s.trim()).filter(Boolean)) {
       window.__tg.renderer.getContext().finish();
     });
     await page.screenshot({ path: join(out, `${rest[0]}.png`) });
-    console.log(`shot ${rest[0]}`, await page.evaluate(() => JSON.stringify({ at: [window.__tg.walker.feet.x, window.__tg.walker.feet.z].map((n) => Math.round(n * 10) / 10), speed: Math.round(window.__tg.walker.speed * 10) / 10, mode: window.__tg.walker.mode })));
+    console.log(`shot ${rest[0]}`, await page.evaluate(() => JSON.stringify({ at: [window.__tg.walker.feet.x, window.__tg.walker.feet.z].map((n) => Math.round(n * 10) / 10), height: Math.round(window.__tg.walker.feet.y * 100) / 100, grounded: window.__tg.walker.grounded, speed: Math.round(window.__tg.walker.speed * 10) / 10, mode: window.__tg.walker.mode })));
     continue;
   }
   await page.evaluate(
@@ -82,8 +82,10 @@ for (const step of script.split(';').map((s) => s.trim()).filter(Boolean)) {
       const tg = window.__tg;
       if (word === 'wait') for (let i = 0; i < Number(rest[0]); i++) tg.tick(1 / 60);
       else if (word === 'keys') {
+        const next = new Set(rest[0] === 'none' ? [] : rest[0].split(','));
+        for (const code of next) if (!tg.input.keys.has(code)) tg.input.pressed.add(code);
         tg.input.keys.clear();
-        if (rest[0] !== 'none') for (const code of rest[0].split(',')) tg.input.keys.add(code);
+        for (const code of next) tg.input.keys.add(code);
       } else if (word === 'look') {
         tg.follow.yaw += (Number(rest[0]) * Math.PI) / 180;
         if (rest[1] !== undefined) tg.follow.pitch = (Number(rest[1]) * Math.PI) / 180;
@@ -97,6 +99,6 @@ for (const step of script.split(';').map((s) => s.trim()).filter(Boolean)) {
     { word, rest, step },
   );
 }
-if (problems.length) console.log(problems.join('\n'));
+if (problems.length) { console.log(problems.join('\n')); process.exitCode = 1; }
 await browser.close();
 server.close();

@@ -198,8 +198,8 @@ float slopeSun(float rel) {
 
 // The meadow as it is painted: three greens, chosen by tone (0 in deep shade, 1 where the light is full).
 vec3 meadowGreen(float tone) {
-  vec3 c = mix(vec3(0.05, 0.25, 0.07), vec3(0.15, 0.46, 0.085), smoothstep(0.2, 0.5, tone));
-  return mix(c, vec3(0.3, 0.57, 0.12), smoothstep(0.56, 0.9, tone));
+  vec3 c = mix(vec3(0.085, 0.23, 0.13), vec3(0.23, 0.42, 0.17), smoothstep(0.2, 0.5, tone));
+  return mix(c, vec3(0.43, 0.57, 0.26), smoothstep(0.56, 0.9, tone));
 }
 
 // The light on it at this hour. shade is how open the place is to the sun (cloudAt's measure).
